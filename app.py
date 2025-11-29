@@ -338,7 +338,7 @@ async def callback(update: Update, context):
 
     plan = query.data
     days = {"sub7": 7, "sub30": 30, "sub365": 365}[plan]
-    price = {"sub7": 249, "sub30": 649, "sub365": 5499}[plan]
+    price = {"sub7": 1, "sub30": 649, "sub365": 5499}[plan]
 
     await query.message.reply_invoice(
         title=f"АстраЛаб — {days} дней",
