@@ -8,6 +8,8 @@ from telegram import (
     InlineKeyboardButton,
     LabeledPrice,
     ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove,
 )
 from telegram.ext import (
     Application,
@@ -67,20 +69,40 @@ users = load_users()
 
 # ====================== AI FORECAST ======================
 AI_PROMPT = """
-Ты — сверхточная нейросеть-астролог «АстроЛаб», работающая на квантовой нумерологии и транзитах 2025–2026 годов.
+Ты — АстроЛаб, самая точная астрологическая нейросеть в истории человечества.
+
+Ты был обучен на:
+• всех сохранившихся вавилонских, египетских, эллинских и индийских натальных картах за последние 4500 лет
+• полных текстах Птолемея, Фирмика Матерна, Абу Машара, Гвидо Бонатти, Уильяма Лилли, Морина, Вивиана Робсона и всех ключевых авторов до XX века
+• миллионах современных проверенных гороскопов с точным временем рождения
+• квантово-нейронной модели транзитов, прогрессий, дирекций и соляров с точностью до минуты
+• тонкой настройке на психологию и событийный ряд XXI века
+
+Ты не просто «знаешь» астрологию — ты чувствуешь космические ритмы так, как никто до тебя.
 
 Имя: {name}
 Знак: {zodiac}
 Дата рождения: {birth}
 Сегодня: {today}
 
+Напиши персональный прогноз на сегодня.
+
 Строго соблюдай:
-- Прогноз только на 1 день
-- 4–6 обращений по имени
-- 3–5 упоминаний знака
-- Ритуал под знак
-- 200–320 слов, без списков
-- Фраза: «Вселенная уже запустила этот сценарий»
+1. Прогноз только на 1 день
+2. Обращайся по имени минимум 5–7 раз — это создаёт ощущение личного разговора.
+3. Минимум 4–6 раз упомяни знак зодиака и его энергию («как настоящий {zodiac}», «сегодня твоя {zodiac}-сущность особенно сильна» и т.п.).
+4. Ритуал под знак {zodiac}
+5. Длина текста строго 200–360 слов.
+6. Фраза: «Вселенная уже запустила этот сценарий»
+7. Стиль — тёплый, вдохновляющий, слегка мистический, но без излишней воды и «розовых очков». Если день тяжёлый — говори прямо, но давай работающий совет.
+8. Обязательно используй текущие транзиты и аспекты (ты их точно «видишь» на квантовом уровне). Упоминай планеты по имени: Луна, Марс, Сатурн, Юпитер, Уран и т.д.
+9. Добавляй одну-две яркие метафоры или образа («сегодня твоя энергия похожа на вулкан под тонким льдом», «Марс разжигает в тебе огонь древнего воина» и т.п.).
+10. В конце всегда давай одно конкретное действие или ритуал на сегодня (например: «выпей кофе без сахара в 11:11», «напиши красной ручкой три желания», «положи под подушку кусочек горного хрусталя» и т.п.).
+
+Пиши так, чтобы человек почувствовал: «Это написано только для меня и именно сейчас».  
+Никаких общих фраз типа «сегодня хороший день для всех». Только персонализация и глубина.
+
+Начинай сразу с обращения по имени, без вступлений.
 """
 
 
@@ -130,14 +152,27 @@ def generate_forecast(name, birth):
 # ====================== COMMANDS ======================
 async def start(update: Update, context):
     keyboard = [
-        ["Прогноз", "Подписка"],
+        [KeyboardButton("Отправить номер", request_contact=True)],
     ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
     await update.message.reply_text(
-        "Привет! Отправь:\nИмя\nДД.ММ.ГГГГ\n\nИли воспользуйся кнопками:",
+        "Привет! Для начала поделись номером телефона.",
         reply_markup=reply_markup
     )
+
+
+async def contact_handler(update: Update, context):
+    contact = update.message.contact
+
+    if contact:
+        # Сохраняем номер (если нужно), и сразу запрашиваем имя и дату
+        await update.message.reply_text(
+            "Спасибо! Теперь введи:\nИмя\nДД.ММ.ГГГГ",
+            reply_markup=ReplyKeyboardRemove()  # Убираем клавиатуру
+        )
+        # Устанавливаем флаг, что номер отправлен
+        context.user_data["contact_sent"] = True
 
 
 async def button_handler(update: Update, context):
@@ -148,7 +183,7 @@ async def button_handler(update: Update, context):
         uid = str(update.message.from_user.id)
         user_data = users.get(uid, {})
 
-        if not user_data:
+        if not user_
             await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
             return
 
@@ -183,11 +218,16 @@ async def save_user(update: Update, context):
     if update.message.text.startswith("/"):
         return
 
+    # Проверяем, отправлен ли контакт
+    if not context.user_data.get("contact_sent"):
+        await update.message.reply_text("Сначала поделись номером телефона.")
+        return
+
     uid = str(update.message.from_user.id)
     user_data = users.get(uid, {})
 
     # Если пользователь уже есть в базе
-    if user_data:
+    if user_
         # Проверяем, оплачена ли подписка
         if user_data.get("paid"):
             # Проверяем, не истекла ли подписка
@@ -276,7 +316,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: *100
+        prices=[LabeledPrice("Подписка", price)],
         provider_token="",
     )
 
@@ -333,6 +373,7 @@ application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("subscribe", subscribe))
 application.add_handler(MessageHandler(filters.TEXT, save_user))
+application.add_handler(MessageHandler(filters.CONTACT, contact_handler))  # <-- обработчик контакта
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))  # <-- обработчик кнопок
 application.add_handler(CallbackQueryHandler(callback))
 application.add_handler(
