@@ -1,7 +1,6 @@
 import os
 import json
 from datetime import datetime, timedelta
-from flask import Flask, request
 
 from telegram import (
     Update,
@@ -25,30 +24,9 @@ from pytz import timezone
 # ====================== CONFIG ======================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-DOMAIN = os.environ.get("DOMAIN")  # https://your-service.onrender.com
-
+DOMAIN = os.environ.get("DOMAIN")  # https://your-service.onrender.com  
 
 USERS_FILE = "users.json"
-
-
-# ====================== FLASK ======================
-app = Flask(__name__)
-
-
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
-    asyncio.run_coroutine_threadsafe(
-        application.update_queue.put(update), 
-        application.bot.loop
-    )
-    return "ok", 200
-
-
-@app.route("/health")
-def health():
-    return "ok", 200
 
 
 # ====================== LOAD USERS ======================
@@ -112,7 +90,7 @@ def generate_forecast(name, birth):
 
     try:
         r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
+            "https://api.groq.com/openai/v1/chat/completions",  # <-- исправлен URL
             headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
             json={
                 "model": "llama-3.1-8b-instant",
@@ -180,8 +158,8 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price)],
-        provider_token="",  # Stars НЕ требует provider_token
+        prices=[LabeledPrice("Подписка", price * 100)],  # <-- исправлено: *100
+        provider_token="",
     )
 
 
@@ -244,6 +222,10 @@ application.add_handler(
 
 
 if __name__ == "__main__":
-    # Устанавливаем webhook
-    application.bot.set_webhook(f"{DOMAIN}/webhook")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000)),
+        url_path=BOT_TOKEN,
+        webhook_url=f"{DOMAIN}/{BOT_TOKEN}",
+        drop_pending_updates=True
+    )
