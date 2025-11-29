@@ -38,7 +38,7 @@ app = Flask(__name__)
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
+    update = await application.update_queue.put(data, application.bot)
     application.update_queue.put(update)
     return "ok", 200
 
@@ -177,7 +177,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price * 1000)],
+        prices=[LabeledPrice("Подписка", price)],
         provider_token="",  # Stars НЕ требует provider_token
     )
 
@@ -215,7 +215,7 @@ def daily_job():
         name = u["name"]
         birth = u["birth"]
         try:
-            application.bot.send_message(
+            await application.bot.send_message(
                 chat_id=int(uid),
                 text=generate_forecast(name, birth)
             )
