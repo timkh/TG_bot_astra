@@ -25,7 +25,7 @@ from pytz import timezone
 # ====================== CONFIG ======================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-# DOMAIN = os.environ.get("DOMAIN")  # https://your-service.onrender.com
+DOMAIN = os.environ.get("DOMAIN")  # https://your-service.onrender.com
 
 
 USERS_FILE = "users.json"
