@@ -278,15 +278,16 @@ def invoice_handler(c):
 
     try:
         bot.send_invoice(
-            chat_id=c.message.chat.id,
-            title=f"АстраЛаб — {days} дней",
-            description="Ежедневные ИИ-прогнозы",
-            payload=f"sub_{days}d",
-            provider_token="",
-            currency="XTR",
-            prices=prices,
-            start_parameter=f"astralab_{days}"
-        )
+  chat_id=USER_ID,
+  title=f"АстраЛаб — {days} дней",
+  description="Ежедневные ИИ-прогнозы",
+  payload=f"sub_{days}d",
+  provider_token="",
+  currency="XTR",
+  prices=[LabeledPrice("Test", 1)],
+  start_parameter=f"astralab_{days}"
+)
+
         bot.answer_callback_query(c.id)
     except Exception as e:
         bot.answer_callback_query(c.id, "Не удалось создать инвойс. Проверь конфигурацию провайдера.", show_alert=True)
