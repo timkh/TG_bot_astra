@@ -183,7 +183,7 @@ async def button_handler(update: Update, context):
         uid = str(update.message.from_user.id)
         user_data = users.get(uid, {})
 
-        if not user_
+        if not user_data:
             await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
             return
 
@@ -227,7 +227,7 @@ async def save_user(update: Update, context):
     user_data = users.get(uid, {})
 
     # Если пользователь уже есть в базе
-    if user_
+    if user_data:
         # Проверяем, оплачена ли подписка
         if user_data.get("paid"):
             # Проверяем, не истекла ли подписка
