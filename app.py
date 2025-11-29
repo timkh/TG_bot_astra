@@ -256,7 +256,7 @@ async def save_user(update: Update, context):
     user_data = users.get(uid, {})
 
     # Если пользователь уже есть в базе
-    if user_
+    if user_data:
         # Проверяем, оплачена ли подписка
         if user_data.get("paid"):
             # Проверяем, не истекла ли подписка
