@@ -97,6 +97,7 @@ AI_PROMPT = """
 Сегодня: {today}
 
 Строго соблюдай:
+- Прогноз только на 1 день
 - 4–6 обращений по имени
 - 3–5 упоминаний знака
 - Одна деталь из прошлого
@@ -270,11 +271,6 @@ def invoice_handler(c):
     else:
         days, price = 365, 5499
 
-    # Проверь PROVIDER_TOKEN в окружении
-    if not PROVIDER_TOKEN:
-        bot.answer_callback_query(c.id, "Платежный провайдер не настроен (PROVIDER_TOKEN пуст).", show_alert=True)
-        return
-
     # Важно: формат amount в LabeledPrice зависит от провайдера (минимальные единицы).
     # Для Telegram Payments для обычных валют это копейки/центы (amount в integer).
     # Для Stars (XTR) — уточни у провайдера, какова минимальная единица. Здесь мы передаём целое число.
@@ -286,7 +282,7 @@ def invoice_handler(c):
             title=f"АстраЛаб — {days} дней",
             description="Ежедневные ИИ-прогнозы",
             payload=f"sub_{days}d",
-            provider_token=PROVIDER_TOKEN,
+            provider_token="",
             currency="XTR",
             prices=prices,
             start_parameter=f"astralab_{days}"
