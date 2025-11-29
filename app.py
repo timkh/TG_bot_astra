@@ -276,7 +276,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price * 100)],  # <-- исправлено: *100
+        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: *100
         provider_token="",
     )
 
