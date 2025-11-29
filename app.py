@@ -7,6 +7,7 @@ from telegram import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     LabeledPrice,
+    ReplyKeyboardMarkup,
 )
 from telegram.ext import (
     Application,
@@ -27,6 +28,25 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 DOMAIN = os.environ.get("DOMAIN")
 
 USERS_FILE = "users.json"
+
+
+def is_valid_birth_date(birth_str):
+    try:
+        d, m, y = map(int, birth_str.split("."))
+        birth_date = datetime(day=d, month=m, year=y)
+        now = datetime.now()
+
+        # Проверяем, не в будущем ли дата
+        if birth_date > now:
+            return False
+
+        # Проверяем, в диапазоне ли 100 лет (не раньше 100 лет назад)
+        if birth_date < now - timedelta(days=365 * 100):
+            return False
+
+        return True
+    except:
+        return False
 
 
 # ====================== LOAD USERS ======================
@@ -109,9 +129,53 @@ def generate_forecast(name, birth):
 
 # ====================== COMMANDS ======================
 async def start(update: Update, context):
+    keyboard = [
+        ["Прогноз", "Подписка"],
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
     await update.message.reply_text(
-        "Привет! Отправь две строки:\nИмя\nДД.ММ.ГГГГ"
+        "Привет! Отправь:\nИмя\nДД.ММ.ГГГГ\n\nИли воспользуйся кнопками:",
+        reply_markup=reply_markup
     )
+
+
+async def button_handler(update: Update, context):
+    text = update.message.text
+
+    if text == "Прогноз":
+        # Логика получения прогноза
+        uid = str(update.message.from_user.id)
+        user_data = users.get(uid, {})
+
+        if not user_data:
+            await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
+            return
+
+        if not user_data.get("paid") and not user_data.get("trial_used"):
+            await update.message.reply_text("Сначала используй пробный прогноз.")
+            return
+
+        if user_data.get("paid"):
+            expires = datetime.fromisoformat(user_data["expires"])
+            if datetime.now() >= expires:
+                users[uid]["paid"] = False
+                save_users(users)
+                await update.message.reply_text("Подписка истекла. /subscribe")
+                return
+
+        name = user_data["name"]
+        birth = user_data["birth"]
+        forecast = generate_forecast(name, birth)
+        await update.message.reply_text(f"Твой прогноз:\n\n{forecast}")
+
+    elif text == "Подписка":
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("7 дней — 249⭐", callback_data="sub7")],
+            [InlineKeyboardButton("30 дней — 649⭐", callback_data="sub30")],
+            [InlineKeyboardButton("365 дней — 5499⭐", callback_data="sub365")],
+        ])
+        await update.message.reply_text("Выбери подписку:", reply_markup=kb)
 
 
 # ✅ Обновлённая версия save_user
@@ -123,7 +187,7 @@ async def save_user(update: Update, context):
     user_data = users.get(uid, {})
 
     # Если пользователь уже есть в базе
-    if user_data:
+    if user_
         # Проверяем, оплачена ли подписка
         if user_data.get("paid"):
             # Проверяем, не истекла ли подписка
@@ -152,6 +216,10 @@ async def save_user(update: Update, context):
                 name = lines[0].strip().capitalize()
                 birth = lines[1].strip()
 
+                if not is_valid_birth_date(birth):
+                    await update.message.reply_text("Проверь дату: ДД.ММ.ГГГГ")
+                    return
+
                 users[uid]["name"] = name
                 users[uid]["birth"] = birth
                 users[uid]["trial_used"] = True
@@ -169,6 +237,10 @@ async def save_user(update: Update, context):
 
         name = lines[0].strip().capitalize()
         birth = lines[1].strip()
+
+        if not is_valid_birth_date(birth):
+            await update.message.reply_text("Проверь дату: ДД.ММ.ГГГГ")
+            return
 
         users.setdefault(uid, {})
         users[uid]["name"] = name
@@ -261,6 +333,7 @@ application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("subscribe", subscribe))
 application.add_handler(MessageHandler(filters.TEXT, save_user))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))  # <-- обработчик кнопок
 application.add_handler(CallbackQueryHandler(callback))
 application.add_handler(
     MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment)
