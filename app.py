@@ -202,7 +202,7 @@ async def successful_payment(update: Update, context):
 
 
 # ====================== DAILY FORECAST JOB ======================
-def daily_job():
+async def daily_job():
     now = datetime.now().date()
 
     for uid, u in users.items():
@@ -219,8 +219,8 @@ def daily_job():
                 chat_id=int(uid),
                 text=generate_forecast(name, birth)
             )
-        except:
-            pass
+        except Exception as e:
+            print(f"Ошибка при отправке пользователю {uid}: {e}")
 
 
 scheduler = BackgroundScheduler(timezone=timezone("Europe/Moscow"))
