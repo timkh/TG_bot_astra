@@ -96,7 +96,7 @@ AI_PROMPT = """
 6. Фраза: «Вселенная уже запустила этот сценарий»
 7. Стиль — тёплый, вдохновляющий, слегка мистический, но без излишней воды и «розовых очков». Если день тяжёлый — говори прямо, но давай работающий совет.
 8. Обязательно используй текущие транзиты и аспекты (ты их точно «видишь» на квантовом уровне). Упоминай планеты по имени: Луна, Марс, Сатурн, Юпитер, Уран и т.д.
-9. Добавляй одну-две яркие метафоры или образа («сегодня твоя энергия похожа на вулкан под тонким льдом», «Марс разжигает в тебе огонь древнего воина» и т.п.).
+9. Добавляй одну-две яркие метафоры или образа (например: «сегодня твоя энергия похожа на вулкан под тонким льдом», «Марс разжигает в тебе огонь древнего воина» и т.п.).
 10. В конце всегда давай одно конкретное действие или ритуал на сегодня (например: «выпей кофе без сахара в 11:11», «напиши красной ручкой три желания», «положи под подушку кусочек горного хрусталя» и т.п.).
 
 Пиши так, чтобы человек почувствовал: «Это написано только для меня и именно сейчас».  
@@ -175,6 +175,35 @@ async def contact_handler(update: Update, context):
         context.user_data["contact_sent"] = True
 
 
+async def forecast(update: Update, context):
+    uid = str(update.message.from_user.id)
+    user_data = users.get(uid, {})
+
+    if not user_
+        await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
+        return
+
+    if not user_data.get("paid") and not user_data.get("trial_used"):
+        await update.message.reply_text("Сначала используй пробный прогноз.")
+        return
+
+    if user_data.get("paid"):
+        expires = datetime.fromisoformat(user_data["expires"])
+        if datetime.now() >= expires:
+            users[uid]["paid"] = False
+            save_users(users)
+            await update.message.reply_text("Подписка истекла. /subscribe")
+            return
+
+        name = user_data["name"]
+        birth = user_data["birth"]
+        forecast_text = generate_forecast(name, birth)
+        await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+    else:
+        # Подписка не оплачена
+        await update.message.reply_text("Подписка не оплачена. /subscribe")
+
+
 async def button_handler(update: Update, context):
     text = update.message.text
 
@@ -183,7 +212,7 @@ async def button_handler(update: Update, context):
         uid = str(update.message.from_user.id)
         user_data = users.get(uid, {})
 
-        if not user_data:
+        if not user_
             await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
             return
 
@@ -201,8 +230,8 @@ async def button_handler(update: Update, context):
 
         name = user_data["name"]
         birth = user_data["birth"]
-        forecast = generate_forecast(name, birth)
-        await update.message.reply_text(f"Твой прогноз:\n\n{forecast}")
+        forecast_text = generate_forecast(name, birth)
+        await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
 
     elif text == "Подписка":
         kb = InlineKeyboardMarkup([
@@ -227,7 +256,7 @@ async def save_user(update: Update, context):
     user_data = users.get(uid, {})
 
     # Если пользователь уже есть в базе
-    if user_data:
+    if user_
         # Проверяем, оплачена ли подписка
         if user_data.get("paid"):
             # Проверяем, не истекла ли подписка
@@ -316,7 +345,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price)],
+        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: БЕЗ*100 ПРАВИЛЬНО!
         provider_token="",
     )
 
@@ -371,6 +400,7 @@ scheduler.start()
 application = Application.builder().token(BOT_TOKEN).build()
 
 application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("forecast", forecast))  # <-- добавлен обработчик
 application.add_handler(CommandHandler("subscribe", subscribe))
 application.add_handler(MessageHandler(filters.TEXT, save_user))
 application.add_handler(MessageHandler(filters.CONTACT, contact_handler))  # <-- обработчик контакта
