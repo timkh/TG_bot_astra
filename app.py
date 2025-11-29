@@ -235,7 +235,7 @@ async def button_handler(update: Update, context):
 
     elif text == "Подписка":
         kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton("7 дней — 249⭐", callback_data="sub7")],
+            [InlineKeyboardButton("7 дней — 1⭐", callback_data="sub7")],
             [InlineKeyboardButton("30 дней — 649⭐", callback_data="sub30")],
             [InlineKeyboardButton("365 дней — 5499⭐", callback_data="sub365")],
         ])
@@ -325,7 +325,7 @@ async def save_user(update: Update, context):
 
 async def subscribe(update: Update, context):
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("7 дней — 249⭐", callback_data="sub7")],
+        [InlineKeyboardButton("7 дней — 1⭐", callback_data="sub7")],
         [InlineKeyboardButton("30 дней — 649⭐", callback_data="sub30")],
         [InlineKeyboardButton("365 дней — 5499⭐", callback_data="sub365")],
     ])
@@ -345,7 +345,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price * 100)],  # <-- исправлено: БЕЗ*100 ПРАВИЛЬНО!
+        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: БЕЗ*100 ПРАВИЛЬНО!
         provider_token="",
     )
 
