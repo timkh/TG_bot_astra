@@ -279,14 +279,15 @@ def invoice_handler(c):
     try:
         bot.send_invoice(
   chat_id=USER_ID,
-  title=f"АстраЛаб — {days} дней",
-  description="Ежедневные ИИ-прогнозы",
-  payload=f"sub_{days}d",
+  title="Test Stars",
+  description="Test цифровой товар",
+  payload="test_payload",
   provider_token="",
   currency="XTR",
   prices=[LabeledPrice("Test", 1)],
-  start_parameter=f"astralab_{days}"
+  start_parameter="test_stars"
 )
+
 
         bot.answer_callback_query(c.id)
     except Exception as e:
