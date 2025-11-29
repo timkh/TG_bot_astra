@@ -16,7 +16,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
-
+import asyncio
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from pytz import timezone
@@ -38,8 +38,11 @@ app = Flask(__name__)
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
-    update = await application.update_queue.put(data, application.bot)
-    application.update_queue.put(update)
+    update = Update.de_json(data, application.bot)
+    asyncio.run_coroutine_threadsafe(
+        application.update_queue.put(update), 
+        application.bot.loop
+    )
     return "ok", 200
 
 
