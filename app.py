@@ -24,7 +24,7 @@ from pytz import timezone
 # ====================== CONFIG ======================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-DOMAIN = os.environ.get("DOMAIN")  # https://your-service.onrender.com  
+DOMAIN = os.environ.get("DOMAIN")
 
 USERS_FILE = "users.json"
 
@@ -47,17 +47,20 @@ users = load_users()
 
 # ====================== AI FORECAST ======================
 AI_PROMPT = """
-Ты — сверхточная нейросеть-астролог «АстраЛаб-3000».
+Ты — сверхточная нейросеть-астролог «АстроЛаб», работающая на квантовой нумерологии и транзитах 2025–2026 годов.
 
 Имя: {name}
 Знак: {zodiac}
 Дата рождения: {birth}
 Сегодня: {today}
 
-Соблюдай:
+Строго соблюдай:
+- Прогноз только на 1 день
 - 4–6 обращений по имени
 - 3–5 упоминаний знака
-- 200–320 слов
+- Ритуал под знак
+- 200–320 слов, без списков
+- Фраза: «Вселенная уже запустила этот сценарий»
 """
 
 
@@ -111,35 +114,78 @@ async def start(update: Update, context):
     )
 
 
+# ✅ Обновлённая версия save_user
 async def save_user(update: Update, context):
     if update.message.text.startswith("/"):
         return
 
-    lines = update.message.text.split("\n")
-    if len(lines) < 2:
-        return await update.message.reply_text("Формат:\nИмя\nДД.ММ.ГГГГ")
-
-    name = lines[0].strip().capitalize()
-    birth = lines[1].strip()
     uid = str(update.message.from_user.id)
+    user_data = users.get(uid, {})
 
-    users.setdefault(uid, {})
-    users[uid]["name"] = name
-    users[uid]["birth"] = birth
-    users[uid]["trial_used"] = False
-    save_users(users)
+    # Если пользователь уже есть в базе
+    if user_data:
+        # Проверяем, оплачена ли подписка
+        if user_data.get("paid"):
+            # Проверяем, не истекла ли подписка
+            expires = datetime.fromisoformat(user_data["expires"])
+            if datetime.now() >= expires:
+                users[uid]["paid"] = False
+                save_users(users)
+                await update.message.reply_text("Подписка истекла. /subscribe")
+                return
+            # Если подписка активна — даём новый прогноз
+            name = user_data["name"]
+            birth = user_data["birth"]
+            forecast = generate_forecast(name, birth)
+            await update.message.reply_text(f"Твой прогноз:\n\n{forecast}")
+        else:
+            # Подписка не оплачена
+            if user_data.get("trial_used"):
+                # Пробный прогноз уже использован
+                await update.message.reply_text("Пробный прогноз уже использован. /subscribe")
+            else:
+                # Даем пробный прогноз
+                lines = update.message.text.split("\n")
+                if len(lines) < 2:
+                    return await update.message.reply_text("Формат:\nИмя\nДД.ММ.ГГГГ")
 
-    # trial 1 day
-    forecast = generate_forecast(name, birth)
-    await update.message.reply_text(
-        f"Твой пробный прогноз:\n\n{forecast}\n\nЧтобы продолжить — /subscribe"
-    )
+                name = lines[0].strip().capitalize()
+                birth = lines[1].strip()
+
+                users[uid]["name"] = name
+                users[uid]["birth"] = birth
+                users[uid]["trial_used"] = True
+                save_users(users)
+
+                forecast = generate_forecast(name, birth)
+                await update.message.reply_text(
+                    f"Твой пробный прогноз:\n\n{forecast}\n\nЧтобы продолжить — /subscribe"
+                )
+    else:
+        # Новый пользователь — вводит имя и дату
+        lines = update.message.text.split("\n")
+        if len(lines) < 2:
+            return await update.message.reply_text("Формат:\nИмя\nДД.ММ.ГГГГ")
+
+        name = lines[0].strip().capitalize()
+        birth = lines[1].strip()
+
+        users.setdefault(uid, {})
+        users[uid]["name"] = name
+        users[uid]["birth"] = birth
+        users[uid]["trial_used"] = True  # <-- сразу отмечаем, что пробный использован
+        save_users(users)
+
+        forecast = generate_forecast(name, birth)
+        await update.message.reply_text(
+            f"Твой пробный прогноз:\n\n{forecast}\n\nЧтобы продолжить — /subscribe"
+        )
 
 
 async def subscribe(update: Update, context):
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("7 дней — 549⭐", callback_data="sub7")],
-        [InlineKeyboardButton("30 дней — 1649⭐", callback_data="sub30")],
+        [InlineKeyboardButton("7 дней — 249⭐", callback_data="sub7")],
+        [InlineKeyboardButton("30 дней — 649⭐", callback_data="sub30")],
         [InlineKeyboardButton("365 дней — 5499⭐", callback_data="sub365")],
     ])
     await update.message.reply_text("Выбери подписку:", reply_markup=kb)
@@ -151,7 +197,7 @@ async def callback(update: Update, context):
 
     plan = query.data
     days = {"sub7": 7, "sub30": 30, "sub365": 365}[plan]
-    price = {"sub7": 549, "sub30": 1649, "sub365": 5499}[plan]
+    price = {"sub7": 249, "sub30": 649, "sub365": 5499}[plan]
 
     await query.message.reply_invoice(
         title=f"АстраЛаб — {days} дней",
