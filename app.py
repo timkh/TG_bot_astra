@@ -351,22 +351,25 @@ async def callback(update: Update, context):
 
 
 async def successful_payment(update: Update, context):
-    payment = update.message.successful_payment
-    uid = str(update.message.from_user.id)
+    try:
+        payment = update.message.successful_payment
+        uid = str(update.message.from_user.id)
 
-    days = int(payment.invoice_payload.replace("plan_", ""))
+        days = int(payment.invoice_payload.replace("plan_", ""))
 
-    expires = datetime.now() + timedelta(days=days)
+        expires = datetime.now() + timedelta(days=days)
 
-    users.setdefault(uid, {})
-    users[uid]["paid"] = True
-    users[uid]["expires"] = expires.isoformat()
-    users[uid]["first_payment"] = datetime.now().isoformat()
-    save_users(users)
+        users.setdefault(uid, {})
+        users[uid]["paid"] = True
+        users[uid]["expires"] = expires.isoformat()
+        users[uid]["first_payment"] = datetime.now().isoformat()
+        save_users(users)
 
-    await update.message.reply_text(
-        f"Оплата прошла!\nПодписка активна до {expires.strftime('%d.%m.%Y')}."
-    )
+        await update.message.reply_text(
+            f"Оплата прошла!\nПодписка активна до {expires.strftime('%d.%m.%Y')}."
+        )
+    except Exception as e:
+        print(f"Ошибка в successful_payment: {e}")
 
 
 # ====================== DAILY FORECAST JOB ======================
