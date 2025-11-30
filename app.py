@@ -16,6 +16,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    PreCheckoutQueryHandler,
     filters,
 )
 import asyncio
@@ -370,7 +371,16 @@ async def successful_payment(update: Update, context):
         )
     except Exception as e:
         print(f"Ошибка в successful_payment: {e}")
+async def pre_checkout_handler(update: Update, context):
+    query = update.pre_checkout_query
 
+    # Проверяем, всё ли в порядке с запросом
+    if query.currency == "XTR":
+        # Подтверждаем чекаут
+        await query.answer(ok=True)
+    else:
+        # Отклоняем, если валюта не XTR
+        await query.answer(ok=False, error_message="Принимаем только Telegram Stars.")
 
 # ====================== DAILY FORECAST JOB ======================
 async def daily_job():
@@ -409,10 +419,8 @@ application.add_handler(MessageHandler(filters.TEXT, save_user))
 application.add_handler(MessageHandler(filters.CONTACT, contact_handler))  # <-- обработчик контакта
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))  # <-- обработчик кнопок
 application.add_handler(CallbackQueryHandler(callback))
-application.add_handler(
-    MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment)
-)
-
+application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
+application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
 
 if __name__ == "__main__":
     application.run_webhook(
