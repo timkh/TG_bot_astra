@@ -445,7 +445,7 @@ async def successful_payment(update: Update, context):
     except Exception as e:
         print(f"Ошибка в successful_payment: {e}")
 
-
+# Проверка оплаты
 async def pre_checkout_handler(update: Update, context):
     query = update.pre_checkout_query
 
@@ -457,7 +457,55 @@ async def pre_checkout_handler(update: Update, context):
         # Отклоняем, если валюта не XTR
         await query.answer(ok=False, error_message="Принимаем только Telegram Stars.")
 
+# Остаток подписки
+async def rest(update: Update, context):
+    uid = str(update.message.from_user.id)
+    user_data = users.get(uid, {})
 
+    if not user_data:
+        await update.message.reply_text("Сначала представься: Имя\nДД.ММ.ГГГГ")
+        return
+
+    if user_data.get("paid"):
+        expires = datetime.fromisoformat(user_data["expires"])
+        remaining = (expires - datetime.now()).days
+        if remaining >= 0:
+            await update.message.reply_text(f"Осталось дней по подписке: {remaining}")
+        else:
+            users[uid]["paid"] = False
+            save_users(users)
+            await update.message.reply_text("Подписка истекла. /subscribe")
+    else:
+        await update.message.reply_text("У тебя нет активной подписки. /subscribe")
+
+# FAQ
+async def help(update: Update, context):
+    faq_text = """
+🤖 **АстроЛаб — твой персональный астролог на каждый день**
+
+🔍 **Что делает бот?**
+— Генерирует точный индивидуальный прогноз на день.
+— Учитывает твой знак зодиака и дату рождения.
+— Помогает выбрать удачные ритуалы и действия.
+
+📋 **Команды:**
+— /start — начать
+— /forecast — получить прогноз на сегодня
+— /rest — узнать остаток подписки
+— /subscribe — оформить подписку
+— /help — этот FAQ
+
+💳 **Как оплатить?**
+— Нажми /subscribe и выбери тариф.
+— Оплати через Telegram Stars (⭐).
+
+🔄 **Один прогноз в день**
+— Прогноз обновляется раз в сутки.
+— Если ты уже получил его — бот покажет старый до следующего дня.
+
+❓ Вопросы? Пиши сюда: @your_support_chat
+"""
+    await update.message.reply_text(faq_text, parse_mode="Markdown")
 # ====================== DAILY FORECAST JOB ======================
 async def daily_job():
     now = datetime.now().date()
@@ -491,6 +539,8 @@ application = Application.builder().token(BOT_TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("forecast", forecast))  # <-- добавлен обработчик
 application.add_handler(CommandHandler("subscribe", subscribe))
+application.add_handler(CommandHandler("rest", rest))
+application.add_handler(CommandHandler("help", help))
 application.add_handler(MessageHandler(filters.TEXT, save_user))
 application.add_handler(MessageHandler(filters.CONTACT, contact_handler))  # <-- обработчик контакта
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))  # <-- обработчик кнопок
