@@ -370,7 +370,7 @@ async def save_user(update: Update, context):
 
                 forecast = generate_forecast(name, birth)
                 await update.message.reply_text(
-                    f"Твой пробный прогноз:\n\n{forecast}\n\nЧтобы продолжить — /subscribe"
+                    f"Твой пробный прогноз:\n\n{forecast}\n\nЧтобы продолжить — /subscribe\nЕсли нужна помощь - /help"
                 )
     else:
         # Новый пользователь — вводит имя и дату
