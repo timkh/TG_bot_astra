@@ -196,10 +196,34 @@ async def forecast(update: Update, context):
             await update.message.reply_text("Подписка истекла. /subscribe")
             return
 
-        name = user_data["name"]
-        birth = user_data["birth"]
-        forecast_text = generate_forecast(name, birth)
-        await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+        # Проверяем, был ли уже прогноз сегодня
+        today = datetime.now().date().isoformat()
+        last_date = user_data.get("last_forecast_date")
+
+        if last_date == today:
+            # Прогноз уже был сегодня
+            cached = user_data.get("cached_forecast")
+            if cached:
+                await update.message.reply_text(f"Твой прогноз на сегодня:\n\n{cached}")
+            else:
+                # На всякий случай, если кэш сломался
+                name = user_data["name"]
+                birth = user_data["birth"]
+                forecast_text = generate_forecast(name, birth)
+                users[uid]["cached_forecast"] = forecast_text
+                save_users(users)
+                await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+        else:
+            # Новый день — генерируем новый прогноз
+            name = user_data["name"]
+            birth = user_data["birth"]
+            forecast_text = generate_forecast(name, birth)
+
+            users[uid]["last_forecast_date"] = today
+            users[uid]["cached_forecast"] = forecast_text
+            save_users(users)
+
+            await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
     else:
         # Подписка не оплачена
         await update.message.reply_text("Подписка не оплачена. /subscribe")
@@ -209,7 +233,6 @@ async def button_handler(update: Update, context):
     text = update.message.text
 
     if text == "Прогноз":
-        # Логика получения прогноза
         uid = str(update.message.from_user.id)
         user_data = users.get(uid, {})
 
@@ -229,10 +252,36 @@ async def button_handler(update: Update, context):
                 await update.message.reply_text("Подписка истекла. /subscribe")
                 return
 
-        name = user_data["name"]
-        birth = user_data["birth"]
-        forecast_text = generate_forecast(name, birth)
-        await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+            # Проверяем, был ли уже прогноз сегодня
+            today = datetime.now().date().isoformat()
+            last_date = user_data.get("last_forecast_date")
+
+            if last_date == today:
+                # Прогноз уже был сегодня
+                cached = user_data.get("cached_forecast")
+                if cached:
+                    await update.message.reply_text(f"Твой прогноз на сегодня:\n\n{cached}")
+                else:
+                    # На всякий случай
+                    name = user_data["name"]
+                    birth = user_data["birth"]
+                    forecast_text = generate_forecast(name, birth)
+                    users[uid]["cached_forecast"] = forecast_text
+                    save_users(users)
+                    await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+            else:
+                # Новый день — генерируем новый прогноз
+                name = user_data["name"]
+                birth = user_data["birth"]
+                forecast_text = generate_forecast(name, birth)
+
+                users[uid]["last_forecast_date"] = today
+                users[uid]["cached_forecast"] = forecast_text
+                save_users(users)
+
+                await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+        else:
+            await update.message.reply_text("Подписка не оплачена. /subscribe")
 
     elif text == "Подписка":
         kb = InlineKeyboardMarkup([
@@ -267,11 +316,35 @@ async def save_user(update: Update, context):
                 save_users(users)
                 await update.message.reply_text("Подписка истекла. /subscribe")
                 return
-            # Если подписка активна — даём новый прогноз
-            name = user_data["name"]
-            birth = user_data["birth"]
-            forecast = generate_forecast(name, birth)
-            await update.message.reply_text(f"Твой прогноз:\n\n{forecast}")
+
+            # Проверяем, был ли уже прогноз сегодня
+            today = datetime.now().date().isoformat()
+            last_date = user_data.get("last_forecast_date")
+
+            if last_date == today:
+                # Прогноз уже был сегодня
+                cached = user_data.get("cached_forecast")
+                if cached:
+                    await update.message.reply_text(f"Твой прогноз на сегодня:\n\n{cached}")
+                else:
+                    # На всякий случай
+                    name = user_data["name"]
+                    birth = user_data["birth"]
+                    forecast_text = generate_forecast(name, birth)
+                    users[uid]["cached_forecast"] = forecast_text
+                    save_users(users)
+                    await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
+            else:
+                # Новый день — генерируем новый прогноз
+                name = user_data["name"]
+                birth = user_data["birth"]
+                forecast_text = generate_forecast(name, birth)
+
+                users[uid]["last_forecast_date"] = today
+                users[uid]["cached_forecast"] = forecast_text
+                save_users(users)
+
+                await update.message.reply_text(f"Твой прогноз:\n\n{forecast_text}")
         else:
             # Подписка не оплачена
             if user_data.get("trial_used"):
@@ -346,7 +419,7 @@ async def callback(update: Update, context):
         description="ИИ прогнозы каждый день",
         payload=f"plan_{days}",
         currency="XTR",
-        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: БЕЗ*100 ПРАВИЛЬНО!
+        prices=[LabeledPrice("Подписка", price)],  # <-- исправлено: *1
         provider_token="",
     )
 
@@ -371,6 +444,8 @@ async def successful_payment(update: Update, context):
         )
     except Exception as e:
         print(f"Ошибка в successful_payment: {e}")
+
+
 async def pre_checkout_handler(update: Update, context):
     query = update.pre_checkout_query
 
@@ -381,6 +456,7 @@ async def pre_checkout_handler(update: Update, context):
     else:
         # Отклоняем, если валюта не XTR
         await query.answer(ok=False, error_message="Принимаем только Telegram Stars.")
+
 
 # ====================== DAILY FORECAST JOB ======================
 async def daily_job():
